@@ -29,6 +29,7 @@ func main() {
 	button.Connect("clicked", func() {
 		if err := auth(); err != nil {
 			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
+			msg.SetTitle("Authorization Error")
 			msg.Response(msg.Destroy)
 			msg.Run()
 		}
