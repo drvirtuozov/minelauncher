@@ -40,5 +40,4 @@ func init() {
 
 	cfg.minepath = fmt.Sprintf("%s/.%s", usr.HomeDir, cfg.launcher)
 	cfg.assetsDir = cfg.minepath + "/assets/"
-	fmt.Println(cfg)
 }
