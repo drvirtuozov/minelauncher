@@ -6,10 +6,11 @@ import (
 )
 
 var (
-	launcher   string
-	minever    string
-	assetIndex string
-	clientURL  string
+	launcher    string
+	minever     string
+	assetIndex  string
+	clientURL   string
+	clientToken string
 )
 
 type config struct {
@@ -23,6 +24,7 @@ type config struct {
 	accessToken string
 	uuid        string
 	clientURL   string
+	clientToken string
 }
 
 var cfg config
@@ -32,6 +34,7 @@ func init() {
 	cfg.minever = minever
 	cfg.assetIndex = assetIndex
 	cfg.clientURL = clientURL
+	cfg.clientToken = clientToken
 	usr, err := user.Current()
 
 	if err != nil {
