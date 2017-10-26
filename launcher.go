@@ -1,13 +1,40 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"runtime"
 	"strings"
 )
+
+func checkAssets() bool {
+	data, err := ioutil.ReadFile(path.Join(cfg.minepath, "assets/indexes", cfg.assetIndex+".json"))
+
+	if err != nil {
+		return false
+	}
+
+	var assetsJSON assetsFile
+	err = json.Unmarshal(data, &assetsJSON)
+
+	if err != nil {
+		return false
+	}
+
+	for _, v := range assetsJSON.Objects {
+		info, err := os.Stat(path.Join(cfg.minepath, "assets/objects", v.Hash[:2], v.Hash))
+
+		if err != nil || info.Size() != v.Size {
+			return false
+		}
+	}
+
+	return true
+}
 
 func runmine() error {
 	lp, err := getLibsPaths(path.Join(cfg.minepath, "libraries"))
