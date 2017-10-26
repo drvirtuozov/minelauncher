@@ -8,8 +8,8 @@ type profile struct {
 }
 
 type launcherProfiles struct {
-	ClientToken string  `json:"clientToken"`
-	Profiles    profile `json:"profiles"`
+	ClientToken string    `json:"clientToken"`
+	Profiles    []profile `json:"profiles"`
 }
 
 type authResponse struct {

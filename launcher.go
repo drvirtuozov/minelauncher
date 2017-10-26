@@ -10,9 +10,13 @@ import (
 )
 
 func runmine() error {
-	paths := append(getLibsPaths(path.Join(cfg.minepath, "libraries")),
-		fmt.Sprintf("%s/versions/%s/%s.jar", cfg.minepath, cfg.minever, cfg.minever))
+	lp, err := getLibsPaths(path.Join(cfg.minepath, "libraries"))
 
+	if err != nil {
+		return err
+	}
+
+	paths := append(lp, fmt.Sprintf("%s/versions/%s/%s.jar", cfg.minepath, cfg.minever, cfg.minever))
 	var strpaths string
 
 	if os := runtime.GOOS; os == "linux" || os == "darwin" {
@@ -38,7 +42,7 @@ func runmine() error {
 	cmd.Dir = cfg.minepath
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
+	err = cmd.Run()
 
 	if err != nil {
 		return err

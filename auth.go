@@ -8,16 +8,10 @@ import (
 )
 
 func auth() error {
-	lprofiles, err := getLauncherProfiles()
-
-	if err != nil {
-		return err
-	}
-
 	res, err := http.PostForm("https://authserver.ely.by/auth/authenticate", url.Values{
 		"username":    []string{username.GetText()},
 		"password":    []string{password.GetText()},
-		"clientToken": []string{lprofiles.ClientToken},
+		"clientToken": []string{cfg.clientToken},
 	})
 
 	if err != nil {
@@ -39,9 +33,9 @@ func auth() error {
 		return err
 	}
 
-	lprofiles.Profiles = jsonRes.SelectedProfile
-	lprofiles.Profiles.AccessToken = jsonRes.AccessToken
-	err = setLauncherProfiles(lprofiles)
+	p := jsonRes.SelectedProfile
+	p.AccessToken = jsonRes.AccessToken
+	err = setProfiles([]profile{p})
 
 	if err != nil {
 		return err
