@@ -77,3 +77,43 @@ func runmine() error {
 
 	return nil
 }
+
+func updateClient() error {
+	zipPath, err := downloadZip(cfg.clientURL)
+
+	if err != nil {
+		return err
+	}
+
+	tempDir, err := ioutil.TempDir("", fmt.Sprintf("%s-client-update", cfg.launcher))
+
+	if err != nil {
+		return err
+	}
+
+	if err := unzip(zipPath, tempDir); err != nil {
+		return err
+	}
+
+	files, err := ioutil.ReadDir(tempDir)
+
+	if err != nil {
+		return err
+	}
+
+	var dirToRename string
+
+	if len(files) == 1 && files[0].IsDir() {
+		dirToRename = path.Join(tempDir, files[0].Name())
+	} else {
+		dirToRename = tempDir
+	}
+
+	if err := copyDir(dirToRename, cfg.minepath); err != nil {
+		return err
+	}
+
+	go os.RemoveAll(tempDir)
+	go os.Remove(zipPath)
+	return nil
+}
