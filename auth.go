@@ -33,9 +33,13 @@ func auth() error {
 		return err
 	}
 
-	p := jsonRes.SelectedProfile
-	p.AccessToken = jsonRes.AccessToken
-	err = setProfiles([]profile{p})
+	var profile launcherProfile
+	profile.ID = jsonRes.SelectedProfile.ID
+	profile.Name = jsonRes.SelectedProfile.Name
+	profile.AccessToken = jsonRes.AccessToken
+	config, _ := getLauncherConfig()
+	config.Profiles = []launcherProfile{profile}
+	setLauncherConfig(config)
 
 	if err != nil {
 		return err

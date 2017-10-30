@@ -6,22 +6,29 @@ import (
 	"strconv"
 )
 
-type profile struct {
+type launcherProfile struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	AccessToken string `json:"access_token"`
+}
+
+type launcherConfig struct {
+	ClientToken      string            `json:"client_token"`
+	Profiles         []launcherProfile `json:"profiles"`
+	LastClientCommit string            `json:"last_client_commit"`
+}
+
+type responseProfile struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	AccessToken string `json:"accessToken"`
 	Legacy      bool   `json:"legacy"`
 }
 
-type launcherProfiles struct {
-	ClientToken string    `json:"clientToken"`
-	Profiles    []profile `json:"profiles"`
-}
-
 type authResponse struct {
-	AccessToken     string  `json:"accessToken"`
-	ClientToken     string  `json:"clientToken"`
-	SelectedProfile profile `json:"selectedProfile"`
+	AccessToken     string          `json:"accessToken"`
+	ClientToken     string          `json:"clientToken"`
+	SelectedProfile responseProfile `json:"selectedProfile"`
 }
 
 type authError struct {

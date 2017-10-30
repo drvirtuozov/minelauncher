@@ -109,13 +109,15 @@ func updateClient() error {
 		dirToRename = tempDir
 	}
 
-	profiles, _ := getProfiles()
+	config, _ := getLauncherConfig()
+	commit := getCommitFromFilename(dirToRename)
+	config.LastClientCommit = commit
 
 	if err := copyDir(dirToRename, cfg.minepath); err != nil {
 		return err
 	}
 
-	setProfiles(profiles)
+	setLauncherConfig(config)
 	go os.RemoveAll(tempDir)
 	go os.Remove(zipPath)
 	return nil

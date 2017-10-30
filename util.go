@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 )
 
 func getLibsPaths(dir string) (paths []string, err error) {
@@ -37,38 +38,30 @@ func getLibsPaths(dir string) (paths []string, err error) {
 	return paths, nil
 }
 
-func getProfiles() (profiles []profile, err error) {
-	filePath := path.Join(cfg.minepath, "launcher_profiles.json")
+func getLauncherConfig() (config launcherConfig, err error) {
+	filePath := path.Join(cfg.minepath, fmt.Sprintf("%s.json", cfg.launcher))
 	jsonBlob, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
-		return nil, err
+		return config, err
 	}
 
-	var lprofiles launcherProfiles
-	err = json.Unmarshal(jsonBlob, &lprofiles)
-
-	if err != nil {
-		return lprofiles.Profiles, err
+	if err := json.Unmarshal(jsonBlob, &config); err != nil {
+		return config, err
 	}
 
-	return lprofiles.Profiles, nil
+	return config, nil
 }
 
-func setProfiles(profiles []profile) error {
-	var lprofiles launcherProfiles
-	lprofiles.ClientToken = cfg.clientToken
-	lprofiles.Profiles = profiles
-	filePath := path.Join(cfg.minepath, "launcher_profiles.json")
-	jsonBlob, err := json.Marshal(lprofiles)
+func setLauncherConfig(config launcherConfig) error {
+	filePath := path.Join(cfg.minepath, fmt.Sprintf("%s.json", cfg.launcher))
+	jsonBlob, err := json.Marshal(config)
 
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(filePath, jsonBlob, 0777)
-
-	if err != nil {
+	if err := ioutil.WriteFile(filePath, jsonBlob, 0777); err != nil {
 		return err
 	}
 
@@ -76,7 +69,13 @@ func setProfiles(profiles []profile) error {
 }
 
 func isAuthorized() bool {
-	profiles, err := getProfiles()
+	config, err := getLauncherConfig()
+
+	if err != nil {
+		return false
+	}
+
+	profiles := config.Profiles
 
 	if len(profiles) == 0 || err != nil {
 		return false
@@ -194,4 +193,29 @@ func copyDir(dirPath, destDir string) error {
 	}
 
 	return nil
+}
+
+func getCommitFromFilename(filename string) string {
+	return strings.TrimSuffix(filename[strings.LastIndex(filename, "-")+1:], path.Ext(filename))
+}
+
+func checkClientUpdates() bool {
+	res, err := http.Get(cfg.clientURL)
+
+	if err != nil {
+		return false
+	}
+
+	defer res.Body.Close()
+	header := res.Header.Get("Content-Disposition")
+	key := "filename="
+	filename := header[strings.Index(header, key)+len(key):]
+	commit := getCommitFromFilename(filename)
+	config, err := getLauncherConfig()
+
+	if err == nil && config.LastClientCommit != commit {
+		return true
+	}
+
+	return false
 }

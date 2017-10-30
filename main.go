@@ -51,9 +51,15 @@ func main() {
 			msg.Run()
 		}
 	})
+	go func() {
+		if checkClientUpdates() {
+			updateBtn.Show()
+		}
+	}()
 	fixed.Put(authBox, 10, 340)
 	fixed.Put(updateBtn, 10, 10)
 	window.Add(fixed)
 	window.ShowAll()
+	updateBtn.Hide()
 	gtk.Main()
 }
