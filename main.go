@@ -24,9 +24,9 @@ func main() {
 	passwordLabel := gtk.NewLabel("Password:")
 	password = gtk.NewEntry()
 	password.SetVisibility(false)
-	button := gtk.NewButton()
-	button.SetLabel("Authorize via Ely.by")
-	button.Connect("clicked", func() {
+	authBtn := gtk.NewButton()
+	authBtn.SetLabel("Authorize via Ely.by")
+	authBtn.Connect("clicked", func() {
 		if err := auth(); err != nil {
 			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
 			msg.SetTitle("Authorization Error")
@@ -40,8 +40,19 @@ func main() {
 	passwordBox.Add(password)
 	authBox.Add(usernameBox)
 	authBox.Add(passwordBox)
-	authBox.Add(button)
+	authBox.Add(authBtn)
+	updateBtn := gtk.NewButton()
+	updateBtn.SetLabel("Update Client")
+	updateBtn.Connect("clicked", func() {
+		if err := updateClient(); err != nil {
+			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
+			msg.SetTitle("Client Updating Error")
+			msg.Response(msg.Destroy)
+			msg.Run()
+		}
+	})
 	fixed.Put(authBox, 10, 340)
+	fixed.Put(updateBtn, 10, 10)
 	window.Add(fixed)
 	window.ShowAll()
 	gtk.Main()
