@@ -1,17 +1,46 @@
 package main
 
 import (
+	"os/user"
+	"path"
+
+	"github.com/google/uuid"
 	"github.com/mattn/go-gtk/gtk"
 )
 
-var username *gtk.Entry
-var password *gtk.Entry
+var launcher string
+var minepath string
+var cfg launcherConfig
+var usernameEntry *gtk.Entry
+var passwordEntry *gtk.Entry
+
+func init() {
+	usr, err := user.Current()
+
+	if err != nil {
+		panic(err)
+	}
+
+	minepath = path.Join(usr.HomeDir, "."+launcher)
+	cfg, _ = getLauncherConfig()
+
+	if cfg.MaxMemory == 0 {
+		cfg.MaxMemory = 1024
+	}
+
+	if cfg.ClientToken == "" {
+		id := uuid.New()
+		cfg.ClientToken = id.String()
+	}
+
+	setLauncherConfig(cfg)
+}
 
 func main() {
 	gtk.Init(nil)
 	window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
 	window.SetPosition(gtk.WIN_POS_CENTER)
-	window.SetTitle(cfg.launcher)
+	window.SetTitle(launcher)
 	window.SetSizeRequest(800, 400)
 	window.SetResizable(false)
 	window.Connect("destroy", gtk.MainQuit)
@@ -20,10 +49,10 @@ func main() {
 	usernameBox := gtk.NewVBox(true, 0)
 	passwordBox := gtk.NewVBox(true, 0)
 	usernameLabel := gtk.NewLabel("Username:")
-	username = gtk.NewEntry()
+	usernameEntry = gtk.NewEntry()
 	passwordLabel := gtk.NewLabel("Password:")
-	password = gtk.NewEntry()
-	password.SetVisibility(false)
+	passwordEntry = gtk.NewEntry()
+	passwordEntry.SetVisibility(false)
 	authBtn := gtk.NewButton()
 	authBtn.SetLabel("Authorize via Ely.by")
 	authBtn.Connect("clicked", func() {
@@ -35,9 +64,9 @@ func main() {
 		}
 	})
 	usernameBox.Add(usernameLabel)
-	usernameBox.Add(username)
+	usernameBox.Add(usernameEntry)
 	passwordBox.Add(passwordLabel)
-	passwordBox.Add(password)
+	passwordBox.Add(passwordEntry)
 	authBox.Add(usernameBox)
 	authBox.Add(passwordBox)
 	authBox.Add(authBtn)
@@ -46,7 +75,7 @@ func main() {
 	updateBtn.Connect("clicked", func() {
 		if err := updateClient(); err != nil {
 			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
-			msg.SetTitle("Client Updating Error")
+			msg.SetTitle("Update Client Error")
 			msg.Response(msg.Destroy)
 			msg.Run()
 		}

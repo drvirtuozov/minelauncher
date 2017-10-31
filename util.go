@@ -39,7 +39,7 @@ func getLibsPaths(dir string) (paths []string, err error) {
 }
 
 func getLauncherConfig() (config launcherConfig, err error) {
-	filePath := path.Join(cfg.minepath, fmt.Sprintf("%s.json", cfg.launcher))
+	filePath := path.Join(minepath, launcher+".json")
 	jsonBlob, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -54,7 +54,7 @@ func getLauncherConfig() (config launcherConfig, err error) {
 }
 
 func setLauncherConfig(config launcherConfig) error {
-	filePath := path.Join(cfg.minepath, fmt.Sprintf("%s.json", cfg.launcher))
+	filePath := path.Join(minepath, launcher+".json")
 	jsonBlob, err := json.Marshal(config)
 
 	if err != nil {
@@ -69,21 +69,13 @@ func setLauncherConfig(config launcherConfig) error {
 }
 
 func isAuthorized() bool {
-	config, err := getLauncherConfig()
-
-	if err != nil {
+	if len(cfg.Profiles) == 0 {
 		return false
 	}
 
-	profiles := config.Profiles
+	profile := cfg.Profiles[0]
 
-	if len(profiles) == 0 || err != nil {
-		return false
-	}
-
-	profile := profiles[0]
-
-	if profile.AccessToken != "" && profile.ID != "" && profile.Name != "" {
+	if profile.AccessToken != "" && profile.UUID != "" && profile.Name != "" {
 		return true
 	}
 
@@ -98,7 +90,7 @@ func downloadZip(url string) (filePath string, err error) {
 	}
 
 	defer res.Body.Close()
-	file, err := ioutil.TempFile("", cfg.launcher+"-update")
+	file, err := ioutil.TempFile("", launcher+"-update")
 
 	if err != nil {
 		return "", err
@@ -200,7 +192,7 @@ func getCommitFromFilename(filename string) string {
 }
 
 func checkClientUpdates() bool {
-	res, err := http.Get(cfg.clientURL)
+	res, err := http.Get(cfg.ClientURL)
 
 	if err != nil {
 		return false
@@ -211,9 +203,8 @@ func checkClientUpdates() bool {
 	key := "filename="
 	filename := header[strings.Index(header, key)+len(key):]
 	commit := getCommitFromFilename(filename)
-	config, err := getLauncherConfig()
 
-	if err == nil && config.LastClientCommit != commit {
+	if cfg.LastClientCommit != commit {
 		return true
 	}
 

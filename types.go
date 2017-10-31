@@ -7,13 +7,17 @@ import (
 )
 
 type launcherProfile struct {
-	ID          string `json:"id"`
+	UUID        string `json:"uuid"`
 	Name        string `json:"name"`
 	AccessToken string `json:"access_token"`
 }
 
 type launcherConfig struct {
+	MinecraftVersion string            `json:"minecraft_version"`
+	AssetIndex       string            `json:"asset_index"`
+	ClientURL        string            `json:"client_url"`
 	ClientToken      string            `json:"client_token"`
+	MaxMemory        int               `json:"max_memory"`
 	Profiles         []launcherProfile `json:"profiles"`
 	LastClientCommit string            `json:"last_client_commit"`
 }

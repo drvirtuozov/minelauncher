@@ -12,7 +12,7 @@ import (
 )
 
 func checkAssets() bool {
-	data, err := ioutil.ReadFile(path.Join(cfg.minepath, "assets/indexes", cfg.assetIndex+".json"))
+	data, err := ioutil.ReadFile(path.Join(minepath, "assets/indexes", cfg.AssetIndex+".json"))
 
 	if err != nil {
 		return false
@@ -26,7 +26,7 @@ func checkAssets() bool {
 	}
 
 	for _, v := range assetsJSON.Objects {
-		info, err := os.Stat(path.Join(cfg.minepath, "assets/objects", v.Hash[:2], v.Hash))
+		info, err := os.Stat(path.Join(minepath, "assets/objects", v.Hash[:2], v.Hash))
 
 		if err != nil || info.Size() != v.Size {
 			return false
@@ -37,13 +37,13 @@ func checkAssets() bool {
 }
 
 func runmine() error {
-	lp, err := getLibsPaths(path.Join(cfg.minepath, "libraries"))
+	lp, err := getLibsPaths(path.Join(minepath, "libraries"))
 
 	if err != nil {
 		return err
 	}
 
-	paths := append(lp, fmt.Sprintf("%s/versions/%s/%s.jar", cfg.minepath, cfg.minever, cfg.minever))
+	paths := append(lp, fmt.Sprintf("%s/versions/%s/%s.jar", minepath, cfg.MinecraftVersion, cfg.MinecraftVersion))
 	var strpaths string
 
 	if os := runtime.GOOS; os == "linux" || os == "darwin" {
@@ -53,20 +53,20 @@ func runmine() error {
 	}
 
 	args := []string{
-		fmt.Sprintf("-Xmx%sM", cfg.memory),
-		fmt.Sprintf("-Djava.library.path=%s/versions/%s/natives/", cfg.minepath, cfg.minever),
+		fmt.Sprintf("-Xmx%dM", cfg.MaxMemory),
+		fmt.Sprintf("-Djava.library.path=%s/versions/%s/natives/", minepath, cfg.MinecraftVersion),
 		"-cp", strpaths,
 		"net.minecraft.client.main.Main",
-		"-username", cfg.username,
-		"-version", cfg.minever,
-		"-assetsDir", cfg.assetsDir,
-		"-assetIndex", cfg.assetIndex,
-		"-accessToken", cfg.accessToken,
-		"-uuid", cfg.uuid,
+		"-username", cfg.Profiles[0].Name,
+		"-version", cfg.MinecraftVersion,
+		"-assetsDir", path.Join(minepath, "assets"),
+		"-assetIndex", cfg.AssetIndex,
+		"-accessToken", cfg.Profiles[0].AccessToken,
+		"-uuid", cfg.Profiles[0].UUID,
 	}
 
 	cmd := exec.Command("java", args...)
-	cmd.Dir = cfg.minepath
+	cmd.Dir = minepath
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -79,13 +79,13 @@ func runmine() error {
 }
 
 func updateClient() error {
-	zipPath, err := downloadZip(cfg.clientURL)
+	zipPath, err := downloadZip(cfg.ClientURL)
 
 	if err != nil {
 		return err
 	}
 
-	tempDir, err := ioutil.TempDir("", fmt.Sprintf("%s-client-update", cfg.launcher))
+	tempDir, err := ioutil.TempDir("", fmt.Sprintf("%s-client-update", launcher))
 
 	if err != nil {
 		return err
@@ -109,15 +109,14 @@ func updateClient() error {
 		dirToRename = tempDir
 	}
 
-	config, _ := getLauncherConfig()
 	commit := getCommitFromFilename(dirToRename)
-	config.LastClientCommit = commit
+	cfg.LastClientCommit = commit
 
-	if err := copyDir(dirToRename, cfg.minepath); err != nil {
+	if err := copyDir(dirToRename, minepath); err != nil {
 		return err
 	}
 
-	setLauncherConfig(config)
+	setLauncherConfig(cfg)
 	go os.RemoveAll(tempDir)
 	go os.Remove(zipPath)
 	return nil
