@@ -43,18 +43,29 @@ func main() {
 	window.SetTitle(launcher)
 	window.SetSizeRequest(800, 400)
 	window.SetResizable(false)
+	window.SetBorderWidth(10)
 	window.Connect("destroy", gtk.MainQuit)
-	fixed := gtk.NewFixed()
+
+	vbox := gtk.NewVBox(false, 1)
+	authBoxAlign := gtk.NewAlignment(0, 1, 0, 0)
+	updateBtnAlign := gtk.NewAlignment(0, 0, 0, 0)
+	vbox.PackStartDefaults(updateBtnAlign)
+	vbox.PackStartDefaults(authBoxAlign)
+
 	authBox := gtk.NewHBox(true, 0)
+	authBox.SetSpacing(5)
+	authBoxAlign.Add(authBox)
 	usernameBox := gtk.NewVBox(true, 0)
 	passwordBox := gtk.NewVBox(true, 0)
 	usernameLabel := gtk.NewLabel("Username:")
+	usernameLabel.SetAlignment(0, 1)
 	usernameEntry = gtk.NewEntry()
 	passwordLabel := gtk.NewLabel("Password:")
+	passwordLabel.SetAlignment(0, 1)
 	passwordEntry = gtk.NewEntry()
 	passwordEntry.SetVisibility(false)
-	authBtn := gtk.NewButton()
-	authBtn.SetLabel("Authorize via Ely.by")
+	authBtn := gtk.NewButtonWithLabel("Authorize via Ely.by")
+
 	authBtn.Connect("clicked", func() {
 		if err := auth(); err != nil {
 			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
@@ -63,31 +74,38 @@ func main() {
 			msg.Run()
 		}
 	})
+
 	usernameBox.Add(usernameLabel)
 	usernameBox.Add(usernameEntry)
 	passwordBox.Add(passwordLabel)
 	passwordBox.Add(passwordEntry)
 	authBox.Add(usernameBox)
 	authBox.Add(passwordBox)
-	authBox.Add(authBtn)
-	updateBtn := gtk.NewButton()
-	updateBtn.SetLabel("Update Client")
+	authBtnAlign := gtk.NewAlignment(0, 1, 0, 0)
+	authBtnAlign.Add(authBtn)
+	authBox.Add(authBtnAlign)
+	updateBtn := gtk.NewButtonWithLabel("Update Client")
+	updateBtnAlign.Add(updateBtn)
+
 	updateBtn.Connect("clicked", func() {
 		if err := updateClient(); err != nil {
 			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
 			msg.SetTitle("Update Client Error")
 			msg.Response(msg.Destroy)
 			msg.Run()
+			return
 		}
+
+		updateBtn.Destroy()
 	})
+
 	go func() {
 		if checkClientUpdates() {
 			updateBtn.Show()
 		}
 	}()
-	fixed.Put(authBox, 10, 340)
-	fixed.Put(updateBtn, 10, 10)
-	window.Add(fixed)
+
+	window.Add(vbox)
 	window.ShowAll()
 	updateBtn.Hide()
 	gtk.Main()
