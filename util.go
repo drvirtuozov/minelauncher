@@ -97,7 +97,11 @@ func downloadZip(url string) (filePath string, err error) {
 	}
 
 	defer file.Close()
-	reader := &passThruReader{Reader: res.Body, length: res.ContentLength}
+	reader := &passThruReader{
+		Reader: res.Body,
+		length: res.ContentLength,
+		text:   "Downloading client update...",
+	}
 	data, err := ioutil.ReadAll(reader)
 
 	if err != nil {
@@ -132,7 +136,10 @@ func unzip(zipPath, destPath string) error {
 			continue
 		}
 
-		fmt.Printf("Extracting... %d of %d files\n", i+1, len(zipReader.File))
+		taskProgress <- progressBarFraction{
+			fraction: float64(i+1) / float64(len(zipReader.File)),
+			text:     fmt.Sprintf("Extracting files... %d of %d", i+1, len(zipReader.File)),
+		}
 		fileReader, err := file.Open()
 
 		if err != nil {

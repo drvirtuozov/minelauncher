@@ -112,8 +112,18 @@ func updateClient() error {
 	commit := getCommitFromFilename(dirToRename)
 	cfg.LastClientCommit = commit
 
+	taskProgress <- progressBarFraction{
+		fraction: 1.0,
+		text:     "Copying files...",
+	}
+
 	if err := copyDir(dirToRename, minepath); err != nil {
 		return err
+	}
+
+	taskProgress <- progressBarFraction{
+		fraction: 1.0,
+		text:     "Removing files...",
 	}
 
 	setLauncherConfig(cfg)

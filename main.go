@@ -13,6 +13,7 @@ var minepath string
 var cfg launcherConfig
 var usernameEntry *gtk.Entry
 var passwordEntry *gtk.Entry
+var taskProgress = make(chan progressBarFraction)
 
 func init() {
 	usr, err := user.Current()
@@ -46,11 +47,19 @@ func main() {
 	window.SetBorderWidth(10)
 	window.Connect("destroy", gtk.MainQuit)
 
-	vbox := gtk.NewVBox(false, 1)
+	vbox := gtk.NewVBox(false, 0)
+	hbox := gtk.NewHBox(false, 0)
 	authBoxAlign := gtk.NewAlignment(0, 1, 0, 0)
 	updateBtnAlign := gtk.NewAlignment(0, 0, 0, 0)
-	vbox.PackStartDefaults(updateBtnAlign)
-	vbox.PackStartDefaults(authBoxAlign)
+	progressBarAlign := gtk.NewAlignment(1, 1, 0, 0)
+	hbox.Add(authBoxAlign)
+	hbox.Add(progressBarAlign)
+	vbox.PackStart(updateBtnAlign, true, true, 0)
+	vbox.PackStart(hbox, true, true, 0)
+
+	progressBar := gtk.NewProgressBar()
+	progressBar.SetSizeRequest(350, 26)
+	progressBarAlign.Add(progressBar)
 
 	authBox := gtk.NewHBox(true, 0)
 	authBox.SetSpacing(5)
@@ -88,15 +97,24 @@ func main() {
 	updateBtnAlign.Add(updateBtn)
 
 	updateBtn.Connect("clicked", func() {
-		if err := updateClient(); err != nil {
-			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
-			msg.SetTitle("Update Client Error")
-			msg.Response(msg.Destroy)
-			msg.Run()
-			return
+		progressBar.Show()
+		taskProgress <- progressBarFraction{
+			text: "Updating client...",
 		}
+		updateBtn.SetSensitive(false)
 
-		updateBtn.Destroy()
+		go func() {
+			if err := updateClient(); err != nil {
+				msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
+				msg.SetTitle("Update Client Error")
+				msg.Response(msg.Destroy)
+				msg.Run()
+				return
+			}
+
+			updateBtn.Hide()
+			progressBar.Hide()
+		}()
 	})
 
 	go func() {
@@ -105,8 +123,16 @@ func main() {
 		}
 	}()
 
+	go func() {
+		for fraction := range taskProgress {
+			progressBar.SetFraction(fraction.fraction)
+			progressBar.SetText(fraction.text)
+		}
+	}()
+
 	window.Add(vbox)
 	window.ShowAll()
 	updateBtn.Hide()
+	progressBar.Hide()
 	gtk.Main()
 }

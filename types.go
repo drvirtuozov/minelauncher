@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 )
@@ -51,16 +50,31 @@ type passThruReader struct {
 	io.Reader
 	total  int64
 	length int64
+	text   string
 }
 
 func (pt *passThruReader) Read(p []byte) (int, error) {
 	n, err := pt.Reader.Read(p)
 
 	if n > 0 {
+		prevFraction := float64(pt.total) / float64(pt.length)
+		prevPercentage := int(prevFraction * 100)
 		pt.total += int64(n)
-		percentage := float64(pt.total) / float64(pt.length) * float64(100)
-		fmt.Println("Downloading client update... " + strconv.Itoa(int(percentage)) + "%")
+		fraction := float64(pt.total) / float64(pt.length)
+		percentage := int(fraction * 100)
+
+		if percentage > prevPercentage {
+			taskProgress <- progressBarFraction{
+				fraction: fraction,
+				text:     pt.text + " " + strconv.Itoa(percentage) + "%",
+			}
+		}
 	}
 
 	return n, err
+}
+
+type progressBarFraction struct {
+	fraction float64
+	text     string
 }
