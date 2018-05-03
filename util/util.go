@@ -1,18 +1,49 @@
-package main
+package util
 
 import (
 	"archive/zip"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
+
+	"github.com/drvirtuozov/minelauncher/config"
+	"github.com/drvirtuozov/minelauncher/events"
 )
 
-func getLibsPaths(dir string) (paths []string, err error) {
+type passThruReader struct {
+	io.Reader
+	total  int64
+	length int64
+	text   string
+}
+
+func (pt *passThruReader) Read(p []byte) (int, error) {
+	n, err := pt.Reader.Read(p)
+
+	if n > 0 {
+		prevFraction := float64(pt.total) / float64(pt.length)
+		prevPercentage := int(prevFraction * 100)
+		pt.total += int64(n)
+		fraction := float64(pt.total) / float64(pt.length)
+		percentage := int(fraction * 100)
+
+		if percentage > prevPercentage {
+			events.TaskProgress <- events.ProgressBarFraction{
+				Fraction: fraction,
+				Text:     pt.text + " " + strconv.Itoa(percentage) + "%",
+			}
+		}
+	}
+
+	return n, err
+}
+
+func GetLibsPaths(dir string) (paths []string, err error) {
 	files, err := ioutil.ReadDir(dir)
 
 	if err != nil {
@@ -23,7 +54,7 @@ func getLibsPaths(dir string) (paths []string, err error) {
 		filepath := path.Join(dir, file.Name())
 
 		if file.IsDir() {
-			filepaths, err := getLibsPaths(filepath)
+			filepaths, err := GetLibsPaths(filepath)
 
 			if err != nil {
 				return nil, err
@@ -38,51 +69,7 @@ func getLibsPaths(dir string) (paths []string, err error) {
 	return paths, nil
 }
 
-func getLauncherConfig() (config launcherConfig, err error) {
-	filePath := path.Join(minepath, launcher+".json")
-	jsonBlob, err := ioutil.ReadFile(filePath)
-
-	if err != nil {
-		return config, err
-	}
-
-	if err := json.Unmarshal(jsonBlob, &config); err != nil {
-		return config, err
-	}
-
-	return config, nil
-}
-
-func setLauncherConfig(config launcherConfig) error {
-	filePath := path.Join(minepath, launcher+".json")
-	jsonBlob, err := json.Marshal(config)
-
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(filePath, jsonBlob, 0777); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func isAuthorized() bool {
-	if len(cfg.Profiles) == 0 {
-		return false
-	}
-
-	profile := cfg.Profiles[0]
-
-	if profile.AccessToken != "" && profile.UUID != "" && profile.Name != "" {
-		return true
-	}
-
-	return false
-}
-
-func downloadZip(url string) (filePath string, err error) {
+func DownloadZip(url string) (filePath string, err error) {
 	res, err := http.Get(url)
 
 	if err != nil {
@@ -90,7 +77,14 @@ func downloadZip(url string) (filePath string, err error) {
 	}
 
 	defer res.Body.Close()
-	file, err := ioutil.TempFile("", launcher+"-update")
+
+	cfg, err := config.Get()
+
+	if err != nil {
+		return "", err
+	}
+
+	file, err := ioutil.TempFile("", cfg.Launcher+"-update")
 
 	if err != nil {
 		return "", err
@@ -117,7 +111,7 @@ func downloadZip(url string) (filePath string, err error) {
 	return file.Name(), nil
 }
 
-func unzip(zipPath, destPath string) error {
+func Unzip(zipPath, destPath string) error {
 	zipReader, err := zip.OpenReader(zipPath)
 
 	if err != nil {
@@ -136,9 +130,9 @@ func unzip(zipPath, destPath string) error {
 			continue
 		}
 
-		taskProgress <- progressBarFraction{
-			fraction: float64(i+1) / float64(len(zipReader.File)),
-			text:     fmt.Sprintf("Extracting files... %d of %d", i+1, len(zipReader.File)),
+		events.TaskProgress <- events.ProgressBarFraction{
+			Fraction: float64(i+1) / float64(len(zipReader.File)),
+			Text:     fmt.Sprintf("Extracting files... %d of %d", i+1, len(zipReader.File)),
 		}
 		fileReader, err := file.Open()
 
@@ -163,7 +157,7 @@ func unzip(zipPath, destPath string) error {
 	return nil
 }
 
-func copyDir(dirPath, destDir string) error {
+func CopyDir(dirPath, destDir string) error {
 	files, err := ioutil.ReadDir(dirPath)
 
 	if err != nil {
@@ -176,7 +170,7 @@ func copyDir(dirPath, destDir string) error {
 
 		if file.IsDir() {
 			os.MkdirAll(toPath, file.Mode())
-			copyDir(fromPath, toPath)
+			CopyDir(fromPath, toPath)
 			continue
 		}
 
@@ -194,26 +188,6 @@ func copyDir(dirPath, destDir string) error {
 	return nil
 }
 
-func getCommitFromFilename(filename string) string {
+func GetCommitFromFilename(filename string) string {
 	return strings.TrimSuffix(filename[strings.LastIndex(filename, "-")+1:], path.Ext(filename))
-}
-
-func checkClientUpdates() bool {
-	res, err := http.Get(cfg.ClientURL)
-
-	if err != nil {
-		return false
-	}
-
-	defer res.Body.Close()
-	header := res.Header.Get("Content-Disposition")
-	key := "filename="
-	filename := header[strings.Index(header, key)+len(key):]
-	commit := getCommitFromFilename(filename)
-
-	if cfg.LastClientCommit != commit {
-		return true
-	}
-
-	return false
 }

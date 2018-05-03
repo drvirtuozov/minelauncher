@@ -1,29 +1,37 @@
 package main
 
 import (
+	"log"
 	"os/user"
 	"path"
 
+	"github.com/drvirtuozov/minelauncher/auth"
+	"github.com/drvirtuozov/minelauncher/config"
+	"github.com/drvirtuozov/minelauncher/events"
+	"github.com/drvirtuozov/minelauncher/launcher"
 	"github.com/google/uuid"
 	"github.com/mattn/go-gtk/gtk"
 )
 
-var launcher string
-var minepath string
-var cfg launcherConfig
-var usernameEntry *gtk.Entry
-var passwordEntry *gtk.Entry
-var taskProgress = make(chan progressBarFraction)
+var lname string
+var mversion string
+var assetIndex string
+var clientURL string
 
 func init() {
 	usr, err := user.Current()
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	minepath = path.Join(usr.HomeDir, "."+launcher)
-	cfg, _ = getLauncherConfig()
+	cfg, _ := config.Get()
+
+	cfg.Launcher = lname
+	cfg.MinecraftVersion = mversion
+	cfg.AssetIndex = assetIndex
+	cfg.ClientURL = clientURL
+	cfg.Minepath = path.Join(usr.HomeDir, "."+cfg.Launcher)
 
 	if cfg.MaxMemory == 0 {
 		cfg.MaxMemory = 1024
@@ -34,14 +42,18 @@ func init() {
 		cfg.ClientToken = id.String()
 	}
 
-	setLauncherConfig(cfg)
+	err = config.Set(cfg)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
 	gtk.Init(nil)
 	window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
 	window.SetPosition(gtk.WIN_POS_CENTER)
-	window.SetTitle(launcher)
+	window.SetTitle(lname)
 	window.SetSizeRequest(800, 400)
 	window.SetResizable(false)
 	window.SetBorderWidth(10)
@@ -51,11 +63,16 @@ func main() {
 	hbox := gtk.NewHBox(false, 0)
 	authBoxAlign := gtk.NewAlignment(0, 1, 0, 0)
 	updateBtnAlign := gtk.NewAlignment(0, 0, 0, 0)
+	playBtnAlign := gtk.NewAlignment(0.5, 1, 0, 0.5)
 	progressBarAlign := gtk.NewAlignment(1, 1, 0, 0)
 	hbox.Add(authBoxAlign)
 	hbox.Add(progressBarAlign)
 	vbox.PackStart(updateBtnAlign, true, true, 0)
+	vbox.PackStart(playBtnAlign, true, true, 100)
 	vbox.PackStart(hbox, true, true, 0)
+
+	playBtn := gtk.NewButtonWithLabel("Enter the Game")
+	playBtnAlign.Add(playBtn)
 
 	progressBar := gtk.NewProgressBar()
 	progressBar.SetSizeRequest(350, 26)
@@ -68,15 +85,18 @@ func main() {
 	passwordBox := gtk.NewVBox(true, 0)
 	usernameLabel := gtk.NewLabel("Username:")
 	usernameLabel.SetAlignment(0, 1)
-	usernameEntry = gtk.NewEntry()
+	usernameEntry := gtk.NewEntry()
 	passwordLabel := gtk.NewLabel("Password:")
 	passwordLabel.SetAlignment(0, 1)
-	passwordEntry = gtk.NewEntry()
+	passwordEntry := gtk.NewEntry()
 	passwordEntry.SetVisibility(false)
 	authBtn := gtk.NewButtonWithLabel("Authorize via Ely.by")
 
 	authBtn.Connect("clicked", func() {
-		if err := auth(); err != nil {
+		username := usernameEntry.GetText()
+		password := passwordEntry.GetText()
+
+		if err := auth.Authenticate(username, password); err != nil {
 			msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
 			msg.SetTitle("Authorization Error")
 			msg.Response(msg.Destroy)
@@ -98,13 +118,13 @@ func main() {
 
 	updateBtn.Connect("clicked", func() {
 		progressBar.Show()
-		taskProgress <- progressBarFraction{
-			text: "Updating client...",
+		events.TaskProgress <- events.ProgressBarFraction{
+			Text: "Updating client...",
 		}
 		updateBtn.SetSensitive(false)
 
 		go func() {
-			if err := updateClient(); err != nil {
+			if err := launcher.UpdateClient(); err != nil {
 				msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
 				msg.SetTitle("Update Client Error")
 				msg.Response(msg.Destroy)
@@ -118,15 +138,15 @@ func main() {
 	})
 
 	go func() {
-		if checkClientUpdates() {
+		if launcher.CheckClientUpdates() {
 			updateBtn.Show()
 		}
 	}()
 
 	go func() {
-		for fraction := range taskProgress {
-			progressBar.SetFraction(fraction.fraction)
-			progressBar.SetText(fraction.text)
+		for fraction := range events.TaskProgress {
+			progressBar.SetFraction(fraction.Fraction)
+			progressBar.SetText(fraction.Text)
 		}
 	}()
 
