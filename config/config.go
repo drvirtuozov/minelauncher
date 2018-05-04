@@ -24,14 +24,10 @@ type Config struct {
 	LastClientCommit string    `json:"last_client_commit"`
 }
 
-var runtimeCfg Config
+var Runtime Config
 
 func Get() (cfg Config, err error) {
-	if runtimeCfg.MinecraftVersion != cfg.MinecraftVersion {
-		return runtimeCfg, nil
-	}
-
-	filepath := path.Join(cfg.Minepath, cfg.Launcher+".json")
+	filepath := path.Join(Runtime.Minepath, Runtime.Launcher+".json")
 	bjson, err := ioutil.ReadFile(filepath)
 
 	if err != nil {
@@ -42,12 +38,12 @@ func Get() (cfg Config, err error) {
 		return cfg, err
 	}
 
-	runtimeCfg = cfg
+	Runtime = cfg
 	return cfg, nil
 }
 
 func Set(cfg Config) error {
-	filepath := path.Join(cfg.Minepath, cfg.Launcher+".json")
+	filepath := path.Join(Runtime.Minepath, Runtime.Launcher+".json")
 	bjson, err := json.Marshal(cfg)
 
 	if err != nil {
@@ -58,6 +54,6 @@ func Set(cfg Config) error {
 		return err
 	}
 
-	runtimeCfg = cfg
+	Runtime = cfg
 	return nil
 }

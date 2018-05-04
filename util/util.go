@@ -70,6 +70,7 @@ func GetLibsPaths(dir string) (paths []string, err error) {
 }
 
 func DownloadZip(url string) (filePath string, err error) {
+	cfg := config.Runtime
 	res, err := http.Get(url)
 
 	if err != nil {
@@ -77,13 +78,6 @@ func DownloadZip(url string) (filePath string, err error) {
 	}
 
 	defer res.Body.Close()
-
-	cfg, err := config.Get()
-
-	if err != nil {
-		return "", err
-	}
-
 	file, err := ioutil.TempFile("", cfg.Launcher+"-update")
 
 	if err != nil {

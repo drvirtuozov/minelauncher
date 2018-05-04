@@ -24,11 +24,7 @@ type assetsFile struct {
 }
 
 func CheckAssets() bool {
-	cfg, err := config.Get()
-
-	if err != nil {
-		return false
-	}
+	cfg := config.Runtime
 
 	data, err := ioutil.ReadFile(path.Join(cfg.Minepath, "assets/indexes", cfg.AssetIndex+".json"))
 
@@ -55,11 +51,7 @@ func CheckAssets() bool {
 }
 
 func Runmine() error {
-	cfg, err := config.Get()
-
-	if err != nil {
-		return err
-	}
+	cfg := config.Runtime
 
 	lp, err := util.GetLibsPaths(path.Join(cfg.Minepath, "libraries"))
 
@@ -103,12 +95,7 @@ func Runmine() error {
 }
 
 func UpdateClient() error {
-	cfg, err := config.Get()
-
-	if err != nil {
-		return err
-	}
-
+	cfg := config.Runtime
 	zipPath, err := util.DownloadZip(cfg.ClientURL)
 
 	if err != nil {
@@ -163,12 +150,7 @@ func UpdateClient() error {
 }
 
 func CheckClientUpdates() bool {
-	cfg, err := config.Get()
-
-	if err != nil {
-		return false
-	}
-
+	cfg := config.Runtime
 	res, err := http.Get(cfg.ClientURL)
 
 	if err != nil {

@@ -27,18 +27,12 @@ type authError struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
-func isAuthorized() bool {
-	cfg, err := config.Get()
-
-	if err != nil {
+func IsAuthenticated() bool {
+	if len(config.Runtime.Profiles) == 0 {
 		return false
 	}
 
-	if len(cfg.Profiles) == 0 {
-		return false
-	}
-
-	profile := cfg.Profiles[0]
+	profile := config.Runtime.Profiles[0]
 
 	if profile.AccessToken != "" && profile.UUID != "" && profile.Name != "" {
 		return true
@@ -48,12 +42,7 @@ func isAuthorized() bool {
 }
 
 func Authenticate(username, password string) error {
-	cfg, err := config.Get()
-
-	if err != nil {
-		return err
-	}
-
+	cfg := config.Runtime
 	res, err := http.PostForm("https://authserver.ely.by/auth/authenticate", url.Values{
 		"username":    []string{username},
 		"password":    []string{password},
@@ -85,6 +74,18 @@ func Authenticate(username, password string) error {
 	profile.AccessToken = jsonRes.AccessToken
 	cfg.Profiles = []config.Profile{profile}
 	err = config.Set(cfg)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Logout() error {
+	cfg := config.Runtime
+	cfg.Profiles = []config.Profile{}
+	err := config.Set(cfg)
 
 	if err != nil {
 		return err

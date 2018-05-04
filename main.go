@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os/user"
 	"path"
@@ -25,13 +26,34 @@ func init() {
 		log.Fatal(err)
 	}
 
-	cfg, _ := config.Get()
+	config.Runtime.Launcher = lname
+	config.Runtime.Minepath = path.Join(usr.HomeDir, "."+lname)
 
-	cfg.Launcher = lname
-	cfg.MinecraftVersion = mversion
-	cfg.AssetIndex = assetIndex
-	cfg.ClientURL = clientURL
-	cfg.Minepath = path.Join(usr.HomeDir, "."+cfg.Launcher)
+	cfg, err := config.Get()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if cfg.Launcher == "" {
+		cfg.Launcher = lname
+	}
+
+	if cfg.MinecraftVersion == "" {
+		cfg.MinecraftVersion = mversion
+	}
+
+	if cfg.AssetIndex == "" {
+		cfg.AssetIndex = assetIndex
+	}
+
+	if cfg.ClientURL == "" {
+		cfg.ClientURL = clientURL
+	}
+
+	if cfg.Minepath == "" {
+		cfg.Minepath = path.Join(usr.HomeDir, "."+cfg.Launcher)
+	}
 
 	if cfg.MaxMemory == 0 {
 		cfg.MaxMemory = 1024
@@ -62,9 +84,12 @@ func main() {
 	vbox := gtk.NewVBox(false, 0)
 	hbox := gtk.NewHBox(false, 0)
 	authBoxAlign := gtk.NewAlignment(0, 1, 0, 0)
+	logoutBoxAlign := gtk.NewAlignment(0, 1, 0, 0)
 	updateBtnAlign := gtk.NewAlignment(0, 0, 0, 0)
 	playBtnAlign := gtk.NewAlignment(0.5, 1, 0, 0.5)
 	progressBarAlign := gtk.NewAlignment(1, 1, 0, 0)
+
+	hbox.Add(logoutBoxAlign)
 	hbox.Add(authBoxAlign)
 	hbox.Add(progressBarAlign)
 	vbox.PackStart(updateBtnAlign, true, true, 0)
@@ -90,7 +115,33 @@ func main() {
 	passwordLabel.SetAlignment(0, 1)
 	passwordEntry := gtk.NewEntry()
 	passwordEntry.SetVisibility(false)
-	authBtn := gtk.NewButtonWithLabel("Authorize via Ely.by")
+	authBtn := gtk.NewButtonWithLabel("Authenticate via Ely.by")
+
+	logoutBox := gtk.NewHBox(true, 0)
+	logoutBox.SetSpacing(5)
+	logoutBoxAlign.Add(logoutBox)
+
+	logoutBoxLblAlign := gtk.NewAlignment(0, 1, 0, 0)
+	logoutBoxLbl := gtk.NewLabel("")
+	logoutBoxLbl.SetPadding(0, 5)
+	logoutBoxLblAlign.Add(logoutBoxLbl)
+	logoutBox.Add(logoutBoxLblAlign)
+
+	logoutBtn := gtk.NewButtonWithLabel("Log Out")
+	logoutBtnAlign := gtk.NewAlignment(0, 1, 0, 0)
+	logoutBtnAlign.Add(logoutBtn)
+	logoutBox.Add(logoutBtnAlign)
+
+	logoutBtn.Connect("clicked", func() {
+		if err := auth.Logout(); err != nil {
+			log.Println(err)
+			return
+		}
+
+		logoutBoxAlign.Hide()
+		authBoxAlign.Show()
+		playBtn.SetSensitive(false)
+	})
 
 	authBtn.Connect("clicked", func() {
 		username := usernameEntry.GetText()
@@ -101,7 +152,13 @@ func main() {
 			msg.SetTitle("Authorization Error")
 			msg.Response(msg.Destroy)
 			msg.Run()
+			return
 		}
+
+		authBoxAlign.Hide()
+		logoutBoxAlign.Show()
+		playBtn.SetSensitive(true)
+		logoutBoxLbl.SetText(fmt.Sprintf("Hello, %s", username))
 	})
 
 	usernameBox.Add(usernameLabel)
@@ -113,6 +170,7 @@ func main() {
 	authBtnAlign := gtk.NewAlignment(0, 1, 0, 0)
 	authBtnAlign.Add(authBtn)
 	authBox.Add(authBtnAlign)
+
 	updateBtn := gtk.NewButtonWithLabel("Update Client")
 	updateBtnAlign.Add(updateBtn)
 
@@ -154,5 +212,14 @@ func main() {
 	window.ShowAll()
 	updateBtn.Hide()
 	progressBar.Hide()
+
+	if auth.IsAuthenticated() {
+		authBoxAlign.Hide()
+		logoutBoxLbl.SetText(fmt.Sprintf("Hello, %s", config.Runtime.Profiles[0].Name))
+	} else {
+		playBtn.SetSensitive(false)
+		logoutBoxAlign.Hide()
+	}
+
 	gtk.Main()
 }
