@@ -39,7 +39,16 @@ func CheckAssets() bool {
 		return false
 	}
 
+	assetsLen := len(assetsJSON.Objects)
+	i := 0
+
 	for _, v := range assetsJSON.Objects {
+		i++
+		events.TaskProgress <- events.ProgressBarFraction{
+			Text:     fmt.Sprintf("Checking client assets... %d of %d", i, assetsLen),
+			Fraction: float64(i) / float64(assetsLen),
+		}
+
 		info, err := os.Stat(path.Join(cfg.Minepath, "assets/objects", v.Hash[:2], v.Hash))
 
 		if err != nil || info.Size() != v.Size {

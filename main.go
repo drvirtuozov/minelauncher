@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os/user"
@@ -195,6 +196,34 @@ func main() {
 		}()
 	})
 
+	playBtn.Connect("clicked", func() {
+		go func() {
+			progressBar.Show()
+
+			if !launcher.CheckAssets() {
+				updateBtn.Show()
+				msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
+					errors.New("failed to check assets, please update your client").Error())
+				msg.SetTitle("Check Assets Error")
+				msg.Response(msg.Destroy)
+				msg.Run()
+				return
+			}
+
+			window.Hide()
+			progressBar.Hide()
+
+			if err := launcher.Runmine(); err != nil {
+				msg := gtk.NewMessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, err.Error())
+				msg.SetTitle("Runmine Error")
+				msg.Response(msg.Destroy)
+				msg.Run()
+			}
+
+			window.Show()
+		}()
+	})
+
 	go func() {
 		if launcher.CheckClientUpdates() {
 			updateBtn.Show()
@@ -202,9 +231,9 @@ func main() {
 	}()
 
 	go func() {
-		for fraction := range events.TaskProgress {
-			progressBar.SetFraction(fraction.Fraction)
-			progressBar.SetText(fraction.Text)
+		for event := range events.TaskProgress {
+			progressBar.SetFraction(event.Fraction)
+			progressBar.SetText(event.Text)
 		}
 	}()
 
