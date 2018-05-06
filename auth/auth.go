@@ -9,6 +9,8 @@ import (
 	"github.com/drvirtuozov/minelauncher/config"
 )
 
+const API_ROOT = "https://authserver.ely.by/auth/"
+
 type responseProfile struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
@@ -43,7 +45,7 @@ func IsAuthenticated() bool {
 
 func Authenticate(username, password string) error {
 	cfg := config.Runtime
-	res, err := http.PostForm("https://authserver.ely.by/auth/authenticate", url.Values{
+	res, err := http.PostForm(API_ROOT+"authenticate", url.Values{
 		"username":    []string{username},
 		"password":    []string{password},
 		"clientToken": []string{cfg.ClientToken},
@@ -84,12 +86,18 @@ func Authenticate(username, password string) error {
 
 func Logout() error {
 	cfg := config.Runtime
+	accessToken := cfg.Profiles[0].AccessToken
 	cfg.Profiles = []config.Profile{}
 	err := config.Set(cfg)
 
 	if err != nil {
 		return err
 	}
+
+	go http.PostForm(API_ROOT+"invalidate", url.Values{
+		"accessToken": []string{accessToken},
+		"clientToken": []string{cfg.ClientToken},
+	})
 
 	return nil
 }
